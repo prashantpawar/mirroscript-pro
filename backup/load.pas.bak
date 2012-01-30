@@ -1,0 +1,44 @@
+unit load;
+
+{$mode objfpc}{$H+}
+
+interface
+
+uses
+  Classes, SysUtils, FileUtil, LResources, Forms, Controls, Graphics, Dialogs,
+  StdCtrls, EditBtn;
+
+type
+
+  { TFormLoad }
+
+  TFormLoad = class(TForm)
+     Button1: TButton;
+     Button2: TButton;
+     FileNameEdit1: TFileNameEdit;
+     Label1: TLabel;
+     procedure FormShow(Sender: TObject);
+  private
+    { private declarations }
+  public
+    { public declarations }
+  end; 
+
+var
+  FormLoad: TFormLoad;
+
+implementation
+
+{ TFormLoad }
+
+procedure TFormLoad.FormShow(Sender: TObject);
+begin
+   FileNameEdit1.Caption:='';
+   FileNameEdit1.SetFocus;
+end;
+
+initialization
+  {$I load.lrs}
+
+end.
+

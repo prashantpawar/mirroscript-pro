@@ -1,0 +1,543 @@
+object FormDialog: TFormDialog
+  Left = 314
+  Height = 707
+  Top = 131
+  Width = 897
+  Caption = 'Teleprompters'
+  ClientHeight = 707
+  ClientWidth = 897
+  OnShow = FormShow
+  Position = poDesktopCenter
+  LCLVersion = '0.9.27'
+  object GroupBox2: TGroupBox
+    Left = 696
+    Height = 312
+    Top = 16
+    Width = 185
+    Anchors = [akTop, akRight]
+    Caption = 'Font and Colors'
+    ClientHeight = 294
+    ClientWidth = 181
+    Color = clBtnFace
+    ParentColor = False
+    TabOrder = 0
+    object Label1: TLabel
+      Left = 4
+      Height = 16
+      Top = 6
+      Width = 58
+      Caption = 'Back Color'
+      ParentColor = False
+    end
+    object Label2: TLabel
+      Left = 4
+      Height = 16
+      Top = 70
+      Width = 57
+      Caption = 'Font Color'
+      ParentColor = False
+    end
+    object Label3: TLabel
+      Left = 4
+      Height = 16
+      Top = 134
+      Width = 48
+      Caption = 'Font Size'
+      ParentColor = False
+    end
+    object Label7: TLabel
+      Left = 4
+      Height = 16
+      Top = 198
+      Width = 68
+      Caption = 'Line Spacing'
+      ParentColor = False
+    end
+    object CmbBackColor: TComboBox
+      Left = 4
+      Height = 23
+      Top = 30
+      Width = 168
+      ItemHeight = 15
+      ItemIndex = 0
+      Items.Strings = (
+        'Black'
+        'Maroon'
+        'Green'
+        'Olive'
+        'Navy'
+        'Purple'
+        'Teal'
+        'Gray'
+        'Silver'
+        'Red'
+        'Lime'
+        'Yellow'
+        'Blue'
+        'Fuchsia'
+        'Aqua'
+        'White'
+      )
+      OnChange = ColorChanged
+      Style = csDropDownList
+      TabOrder = 0
+      Text = 'Black'
+    end
+    object CmbFontColor: TComboBox
+      Left = 4
+      Height = 23
+      Top = 94
+      Width = 168
+      ItemHeight = 15
+      ItemIndex = 15
+      Items.Strings = (
+        'Black'
+        'Maroon'
+        'Green'
+        'Olive'
+        'Navy'
+        'Purple'
+        'Teal'
+        'Gray'
+        'Silver'
+        'Red'
+        'Lime'
+        'Yellow'
+        'Blue'
+        'Fuchsia'
+        'Aqua'
+        'White'
+      )
+      OnChange = ColorChanged
+      Style = csDropDownList
+      TabOrder = 1
+      Text = 'White'
+    end
+    object CmbFontSize: TComboBox
+      Left = 4
+      Height = 23
+      Top = 158
+      Width = 168
+      ItemHeight = 15
+      ItemIndex = 2
+      Items.Strings = (
+        'Tiny'
+        'Small'
+        'Normal'
+        'Large'
+        'Huge'
+        'Epic'
+      )
+      Style = csDropDownList
+      TabOrder = 2
+      Text = 'Normal'
+    end
+    object ChkCenter: TCheckBox
+      Left = 4
+      Height = 19
+      Top = 262
+      Width = 91
+      Caption = 'Text Centered'
+      TabOrder = 3
+    end
+    object ComboBox1: TComboBox
+      Left = 4
+      Height = 23
+      Top = 222
+      Width = 168
+      Enabled = False
+      ItemHeight = 15
+      ItemIndex = 0
+      Items.Strings = (
+        'Single'
+        '1.5'
+        'Double'
+        '2.5'
+        'Triple'
+        '3.5'
+        'Quad'
+        '4.5'
+      )
+      Style = csDropDownList
+      TabOrder = 4
+      Text = 'Single'
+    end
+  end
+  object GroupBox3: TGroupBox
+    Left = 696
+    Height = 152
+    Top = 344
+    Width = 185
+    Anchors = [akTop, akRight]
+    Caption = 'Speed and Orientation'
+    ClientHeight = 134
+    ClientWidth = 181
+    TabOrder = 1
+    object Label8: TLabel
+      Left = 4
+      Height = 16
+      Top = 6
+      Width = 65
+      Caption = 'Initial Speed'
+      ParentColor = False
+    end
+    object CmbSpeed: TComboBox
+      Left = 4
+      Height = 23
+      Top = 30
+      Width = 168
+      ItemHeight = 15
+      ItemIndex = 5
+      Items.Strings = (
+        '0 - Very slow'
+        '1'
+        '2'
+        '3'
+        '4'
+        '5 - Normal'
+        '6'
+        '7'
+        '8'
+        '9 - Fastest'
+      )
+      Style = csDropDownList
+      TabOrder = 0
+      Text = '5 - Normal'
+    end
+    object ChkHorizontal: TCheckBox
+      Left = 4
+      Height = 19
+      Top = 70
+      Width = 95
+      Caption = 'Flip Horizontal'
+      TabOrder = 1
+    end
+    object ChkVertical: TCheckBox
+      Left = 4
+      Height = 19
+      Top = 102
+      Width = 79
+      Caption = 'Flip Vertical'
+      TabOrder = 2
+    end
+  end
+  object GroupBox4: TGroupBox
+    Left = 16
+    Height = 680
+    Top = 16
+    Width = 664
+    Anchors = [akTop, akLeft, akRight, akBottom]
+    Caption = 'Text'
+    ClientHeight = 662
+    ClientWidth = 660
+    TabOrder = 2
+    object MmoText: TRichMemo
+      Left = 0
+      Height = 580
+      Top = 38
+      Width = 660
+      Align = alClient
+      HideSelection = False
+      Lines.Strings = (
+        'Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Nam cursus. Morbi ut mi. Nullam enim leo, egestas'
+        'id, condimentum at, laoreet mattis, massa. Sed eleifend nonummy diam. Praesent mauris ante, elementum'
+        'et, bibendum at, posuere sit amet, nibh. Duis tincidunt lectus quis dui viverra vestibulum. Suspendisse'
+        'vulputate aliquam dui. Nulla elementum dui ut augue. Aliquam vehicula mi at mauris. Maecenas placerat, nisl'
+        'at consequat rhoncus, sem nunc gravida justo, quis eleifend arcu velit quis lacus. Morbi magna magna,'
+        'tincidunt a, mattis non, imperdiet vitae, tellus. Sed odio est, auctor ac, sollicitudin in, consequat vitae, orci.'
+        'Fusce id felis. Vivamus sollicitudin metus eget eros.'
+        ''
+        'Pellentesque habitant morbi tristique senectus et netus et malesuada fames ac turpis egestas. In posuere'
+        'felis nec tortor. Pellentesque faucibus. Ut accumsan ultricies elit. Maecenas at justo id velit placerat molestie.'
+        'Donec dictum lectus non odio. Cras a ante vitae enim iaculis aliquam. Mauris nunc quam, venenatis nec,'
+        'euismod sit amet, egestas placerat, est. Pellentesque habitant morbi tristique senectus et netus et malesuada'
+        'fames ac turpis egestas. Cras id elit. Integer quis urna. Ut ante enim, dapibus malesuada, fringilla eu,'
+        'condimentum quis, tellus. Aenean porttitor eros vel dolor. Donec convallis pede venenatis nibh. Duis quam.'
+        'Nam eget lacus. Aliquam erat volutpat. Quisque dignissim congue leo.'
+        ''
+        'Mauris vel lacus vitae felis vestibulum volutpat. Etiam est nunc, venenatis in, tristique eu, imperdiet ac, nisl.'
+        'Cum sociis natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. In iaculis facilisis'
+        'massa. Etiam eu urna. Sed porta. Suspendisse quam leo, molestie sed, luctus quis, feugiat in, pede. Fusce'
+        'tellus. Sed metus augue, convallis et, vehicula ut, pulvinar eu, ante. Integer orci tellus, tristique vitae,'
+        'consequat nec, porta vel, lectus. Nulla sit amet diam. Duis non nunc. Nulla rhoncus dictum metus. Curabitur'
+        'tristique mi condimentum orci. Phasellus pellentesque aliquam enim. Proin dui lectus, cursus eu, mattis'
+        'laoreet, viverra sit amet, quam. Curabitur vel dolor ultrices ipsum dictum tristique. Praesent vitae lacus. Ut'
+        'velit enim, vestibulum non, fermentum nec, hendrerit quis, leo. Pellentesque rutrum malesuada neque.'
+        ''
+        'Nunc tempus felis vitae urna. Vivamus porttitor, neque at volutpat rutrum, purus nisi eleifend libero, a'
+        'tempus libero lectus feugiat felis. Morbi diam mauris, viverra in, gravida eu, mattis in, ante. Morbi eget arcu.'
+        'Morbi porta, libero id ullamcorper nonummy, nibh ligula pulvinar metus, eget consectetuer augue nisi quis'
+        'lacus. Ut ac mi quis lacus mollis aliquam. Curabitur iaculis tempus eros. Curabitur vel mi sit amet magna'
+        'malesuada ultrices. Ut nisi erat, fermentum vel, congue id, euismod in, elit. Fusce ultricies, orci ac feugiat'
+        'suscipit, leo massa sodales velit, et scelerisque mi tortor at ipsum. Proin orci odio, commodo ac, gravida non,'
+        'tristique vel, tellus. Pellentesque nibh libero, ultricies eu, sagittis non, mollis sed, justo. Praesent metus'
+        'ipsum, pulvinar pulvinar, porta id, fringilla at, est.'
+        ''
+        'Phasellus felis dolor, scelerisque a, tempus eget, lobortis id, libero. Donec scelerisque leo ac risus. Praesent'
+        'sit amet est. In dictum, dolor eu dictum porttitor, enim felis viverra mi, eget luctus massa purus quis odio.'
+        'Etiam nulla massa, pharetra facilisis, volutpat in, imperdiet sit amet, sem. Aliquam nec erat at purus cursus'
+        'interdum. Vestibulum ligula augue, bibendum accumsan, vestibulum ut, commodo a, mi. Morbi ornare'
+        'gravida elit. Integer congue, augue et malesuada iaculis, ipsum dui aliquet felis, at cursus magna nisl nec elit.'
+        'Donec iaculis diam a nisi accumsan viverra. Duis sed tellus et tortor vestibulum gravida. Praesent elementum'
+        'elit at tellus. Curabitur metus ipsum, luctus eu, malesuada ut, tincidunt sed, diam. Donec quis mi sed magna'
+        'hendrerit accumsan. Suspendisse risus nibh, ultricies eu, volutpat non, condimentum hendrerit, augue. Etiam'
+        'eleifend, metus vitae adipiscing semper, mauris ipsum iaculis elit, congue gravida elit mi egestas orci.'
+        'Curabitur pede.'
+        ''
+        'Maecenas aliquet velit vel turpis. Mauris neque metus, malesuada nec, ultricies sit amet, porttitor mattis,'
+        'enim. In massa libero, interdum nec, interdum vel, blandit sed, nulla. In ullamcorper, est eget tempor cursus,'
+        'neque mi consectetuer mi, a ultricies massa est sed nisl. Class aptent taciti sociosqu ad litora torquent per'
+        'conubia nostra, per inceptos hymenaeos. Proin nulla arcu, nonummy luctus, dictum eget, fermentum et,'
+        'lorem. Nunc porta convallis pede.'
+      )
+      OnChange = UpdateToolbar
+      OnClick = UpdateToolbar
+      OnKeyPress = MmoTextKeyPress
+      OnKeyUp = MmoTextKeyUp
+      ScrollBars = ssAutoBoth
+      TabOrder = 0
+    end
+    object Panel1: TPanel
+      Left = 0
+      Height = 38
+      Top = 0
+      Width = 660
+      Align = alTop
+      BevelOuter = bvNone
+      ClientHeight = 38
+      ClientWidth = 660
+      TabOrder = 1
+      object BtnBold: TToggleBox
+        Left = 520
+        Height = 23
+        Top = 6
+        Width = 58
+        Anchors = [akTop, akRight]
+        Caption = 'Bold'
+        OnClick = UpdateEditFont
+        TabOrder = 0
+      end
+      object BtnItalic: TToggleBox
+        Left = 584
+        Height = 23
+        Top = 6
+        Width = 58
+        Anchors = [akTop, akRight]
+        Caption = 'Italic'
+        OnClick = UpdateEditFont
+        TabOrder = 1
+      end
+      object CmbTextColor: TComboBox
+        Left = 360
+        Height = 23
+        Top = 6
+        Width = 148
+        Anchors = [akTop, akRight]
+        ItemHeight = 15
+        ItemIndex = 0
+        Items.Strings = (
+          'Black'
+          'Maroon'
+          'Green'
+          'Olive'
+          'Navy'
+          'Purple'
+          'Teal'
+          'Gray'
+          'Silver'
+          'Red'
+          'Lime'
+          'Yellow'
+          'Blue'
+          'Fuchsia'
+          'Aqua'
+          'White'
+        )
+        OnCloseUp = UpdateEditFont
+        OnSelect = UpdateEditFont
+        Style = csDropDownList
+        TabOrder = 2
+        Text = 'Black'
+      end
+      object BtnSave: TButton
+        Left = 172
+        Height = 25
+        Top = 6
+        Width = 75
+        Caption = 'Save'
+        OnClick = BtnSaveClick
+        TabOrder = 3
+      end
+      object BtnLoad: TButton
+        Left = 92
+        Height = 25
+        Top = 6
+        Width = 75
+        Caption = 'Load'
+        OnClick = BtnLoadClick
+        TabOrder = 4
+      end
+      object BtnNew: TButton
+        Left = 12
+        Height = 25
+        Top = 6
+        Width = 75
+        Caption = 'New'
+        OnClick = BtnNewClick
+        TabOrder = 5
+      end
+      object BtnSaveAs: TButton
+        Left = 252
+        Height = 25
+        Top = 6
+        Width = 75
+        Caption = 'Save as...'
+        OnClick = BtnSaveAsClick
+        TabOrder = 6
+      end
+    end
+    object Panel2: TPanel
+      Left = 0
+      Height = 44
+      Top = 618
+      Width = 660
+      Align = alBottom
+      BevelOuter = bvNone
+      ClientHeight = 44
+      ClientWidth = 660
+      TabOrder = 2
+      object Label4: TLabel
+        Left = 12
+        Height = 18
+        Top = 16
+        Width = 600
+        Caption = '* Black and navy backgrounds are represented with much brighter colors to allow easier editing'
+        ParentColor = False
+      end
+    end
+    object EdtInsert: TEdit
+      Left = 322
+      Height = 25
+      Top = 245
+      Width = 80
+      TabOrder = 3
+      Text = 'EdtInsert'
+      Visible = False
+    end
+  end
+  object GroupBox1: TGroupBox
+    Left = 696
+    Height = 184
+    Top = 512
+    Width = 184
+    Anchors = [akRight, akBottom]
+    Caption = 'Scroll'
+    ClientHeight = 166
+    ClientWidth = 180
+    TabOrder = 3
+    object Label9: TLabel
+      Left = 4
+      Height = 18
+      Top = 30
+      Width = 129
+      Caption = 'SPACE - Pause scroll'
+      ParentColor = False
+    end
+    object Label5: TLabel
+      Left = 4
+      Height = 18
+      Top = 6
+      Width = 107
+      Caption = '0..9  - Set speed'
+      ParentColor = False
+    end
+    object Label6: TLabel
+      Left = 4
+      Height = 18
+      Top = 102
+      Width = 159
+      Caption = 'ESC - Stop scroll and exit'
+      ParentColor = False
+    end
+    object Label10: TLabel
+      Left = 4
+      Height = 18
+      Top = 54
+      Width = 78
+      Caption = 'U - Scroll UP'
+      ParentColor = False
+    end
+    object Label11: TLabel
+      Left = 4
+      Height = 18
+      Top = 78
+      Width = 102
+      Caption = 'D - Scroll DOWN'
+      ParentColor = False
+    end
+    object BtnStart: TButton
+      Left = 4
+      Height = 25
+      Top = 126
+      Width = 168
+      Caption = 'Start >'
+      Color = clRed
+      Default = True
+      OnClick = BtnStartClick
+      TabOrder = 0
+    end
+  end
+  object ColorDialog1: TColorDialog
+    Color = clBlack
+    CustomColors.Strings = (
+      'ColorA=000000'
+      'ColorB=000080'
+      'ColorC=008000'
+      'ColorD=008080'
+      'ColorE=800000'
+      'ColorF=800080'
+      'ColorG=808000'
+      'ColorH=808080'
+      'ColorI=C0C0C0'
+      'ColorJ=0000FF'
+      'ColorK=00FF00'
+      'ColorL=00FFFF'
+      'ColorM=FF0000'
+      'ColorN=FF00FF'
+      'ColorO=FFFF00'
+      'ColorP=FFFFFF'
+      'ColorQ=C0DCC0'
+      'ColorR=F0CAA6'
+      'ColorS=F0FBFF'
+      'ColorT=A4A0A0'
+    )
+    left = 386
+    top = 61
+  end
+  object OpenDialog1: TOpenDialog
+    DefaultExt = '.tpt'
+    Filter = 'Text|*.tpt'
+    left = 152
+    top = 104
+  end
+  object SaveDialog1: TSaveDialog
+    DefaultExt = '.tpt'
+    Filter = 'Text|*.tpt'
+    left = 168
+    top = 104
+  end
+  object TmrEnable: TTimer
+    Enabled = False
+    Interval = 5000
+    OnTimer = TmrEnableTimer
+    left = 824
+    top = 664
+  end
+  object TmrAnimate: TTimer
+    Enabled = False
+    Interval = 200
+    OnTimer = TmrAnimateTimer
+    left = 832
+    top = 288
+  end
+end

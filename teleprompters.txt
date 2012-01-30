@@ -1,0 +1,25 @@
+-ikona
+-copyright text
+
+-win verzija
+-sklapanje jednog sorsa
+-provera i pakovanje finalne mac instalacije
+-provera i pakovanje finalne win instalacije
+
+
+For the icon creation, i suggest a video camcorder icon or maybe just a stylized "T" which looks cool. Anything which has to do with recording video will be just fine. Some cool designs are at http://img49.imageshack.us/i/3diconpackxb5.gif/... (i like the lightning bolt). Found some good concepts on google image search by doing a search for "cool icon"
+
+Website address: FreeTeleprompterSoftware.com
+Company info:
+Reflective Security LLC
+4731 South Ave #13
+Toledo OH 43615
+419-787-4526
+sales@freetelepromptersoftware.com
+
+
+The copyright notice example can be updated to reflect our company name as "Reflective Security LLC." I'm sure a default notice will be fine, (all it really needs to say is that we have exclusive rights to distribution without written consent and that we aren't liable if it crashes their OS, that kind of thing)
+
+I will make a note to go over the features of the software tomorrow with Eric to see if he had communicated the couple of bugs we noticed with regards to the margins. I seem to recall the words were being split in the middle in some instances and that the margin was off the edge of the screen. I can't remember the exact details but will follow up in my next email, unless of course you've already gone over that with him
+
+Look forward to hearing from you and seeing the final products!

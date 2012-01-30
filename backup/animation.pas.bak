@@ -1,0 +1,368 @@
+unit Animation;
+
+{$mode objfpc}{$H+}
+
+interface
+
+uses
+   Classes, SysUtils, forms, controls, gl, glu, glut, Graphics, LCLIntf, IntfGraphics, math,
+   {$ifdef darwin}
+   opengl,
+   {$endif}
+   {$ifdef windows}
+   glext,
+   {$endif}
+   CTypes, dialogs, GLTileBitmap;
+
+
+const
+   SpeedList: array ['0'..'9'] of Integer = (1, 100, 200, 400, 600, 800, 1000, 1200, 1400, 1600);
+
+type
+   TColorChange = record
+      position:integer;
+      color:TColor;
+      style:TFontStyles;
+   end;
+
+var
+   TileX:integer = 128;
+   TileY:integer = 128;
+   FONTSIZE:integer;
+   FONTCOLOR:TColor;
+   BACKCOLOR:TColor;
+   LIGHTBACKCOLOR:TColor;
+   BACKR,BACKB,BACKG:integer;
+   SCREENW,SCREENH:integer;
+   TexArrayMax:integer;
+   CENTERTEXT:Boolean;
+   FLIPHORIZONTAL:Boolean;
+   FLIPVERTICAL:Boolean;
+   texarray : array of TOpenGLTileBitmap;
+   YPos,OldYPos:single;
+   INITIALSPEED:char;
+   ScrollDir:integer;
+   LASTT:single;
+   SpeedMulti:integer;
+   ScrollStop:Boolean;
+   SwapInterval:clong;
+   ColorArray: array of TColorChange;
+
+{$ifdef darwin}
+{$linkframework OpenGL}
+function CGLSetParameter(ctx:CGLContextObj;pname:CGLContextParameter;const params:PClong):CGLError; cdecl; external;
+{$endif}
+
+procedure ShowAnimation(w,h:integer);
+procedure CalcNewY;
+procedure KeyPress(Key:Byte);
+procedure CreateImages;
+
+implementation
+
+uses dialog;
+
+//OPENGL SPECIFIC//
+procedure GLDrawScene; cdecl;
+var
+   y : integer;
+   i : integer;
+begin
+   CalcNewY;
+   glClearColor(BACKR, BACKG, BACKB, 0);
+   glClear(GL_COLOR_BUFFER_BIT or GL_DEPTH_BUFFER_BIT);
+   glMatrixMode(GL_PROJECTION);
+   glLoadIdentity;
+   if     FLIPHORIZONTAL and     FLIPVERTICAL then glOrtho(SCREENW, 0, 0, SCREENH, -1, 1);
+   if not FLIPHORIZONTAL and     FLIPVERTICAL then glOrtho(0, SCREENW, 0, SCREENH, -1, 1);
+   if     FLIPHORIZONTAL and not FLIPVERTICAL then glOrtho(SCREENW, 0, SCREENH, 0, -1, 1);
+   if not FLIPHORIZONTAL and not FLIPVERTICAL then glOrtho(0, SCREENW, SCREENH, 0, -1, 1);
+   glMatrixMode(GL_ModelView);
+
+   {$ifdef darwin}
+   y := floor(SCREENH-YPos);
+   y := SCREENH-round(YPos);
+   for i:=0 to length(texarray)-1 do begin
+      if ((y+texarray[i].Height)>0) then texarray[i].DrawTiles(0, y,TileX,TileY);
+      y := y + texarray[i].Height;
+      if y>SCREENH then break;
+   end;
+   {$endif}
+
+   {$ifdef windows}
+   y := SCREENH-round(YPos)+(length(texarray)*texarray[0].Height);
+   for i:=length(texarray)-1 downto 0 do begin
+      if ((y-texarray[i].Height)<=SCREENH) then texarray[i].DrawTiles(0, y,TileX,TileY);
+      y := y - texarray[i].Height;
+      if y<(0-texarray[i].Height) then break;
+   end;
+   {$endif}
+
+   glutSwapBuffers;
+end;
+
+procedure GLReSizeScene(Width, Height: Integer); cdecl;
+begin
+   if Height = 0 then Height := 1;
+   glViewport(0, 0, Width, Height);
+   glMatrixMode(GL_PROJECTION);
+   glLoadIdentity;
+   glMatrixMode(GL_MODELVIEW);
+   glLoadIdentity;
+end;
+
+procedure GLKeyboard(Key: Byte; X, Y: Longint); cdecl;
+begin
+   KeyPress(Key);
+end;
+
+procedure GLStopScroll;
+var
+   i:integer;
+begin
+   glutLeaveGameMode;
+   for i:=0 to length(texarray)-1 do texarray[i].Free;
+   setlength(texarray,0);
+   halt(0);
+end;
+
+procedure glutInitPascal(ParseCmdLine: Boolean);
+var
+  Cmd: array of PChar;
+  CmdCount, I: Integer;
+begin
+   if ParseCmdLine then CmdCount := ParamCount + 1 else CmdCount := 1;
+   SetLength(Cmd, CmdCount);
+   for I := 0 to CmdCount - 1 do Cmd[I] := PChar(ParamStr(I));
+   glutInit(@CmdCount, @Cmd);
+end;
+
+procedure GLStartAnimation(w,h:integer);
+var
+   FSMode:string;
+begin
+   //showmessage(glgetstring(GL_EXTENSIONS));
+   FSMode:=inttostr(w)+'x'+inttostr(h)+':32';
+   GlutInitPascal(False);
+   glutInitDisplayMode(GLUT_DOUBLE or GLUT_RGB or GLUT_DEPTH);
+   glutGameModeString(PChar(FSMode));
+   glutEnterGameMode;
+   glutSetCursor(GLUT_CURSOR_NONE);
+   glViewport(0, 0, SCREENW, SCREENH);
+   glClearColor(BACKR, BACKG, BACKB, 0);
+   glEnable(GL_DEPTH_TEST);
+   CreateImages;
+   {$ifdef darwin}
+   SwapInterval:=1;
+   CGLSetParameter(CGLGetCurrentContext(), kCGLCPSwapInterval, @SwapInterval);
+   {$endif}
+   {$ifdef windows}
+   Load_WGL_ARB_extensions_string;
+   Load_WGL_EXT_extensions_string;
+   if Load_WGL_EXT_swap_control then begin
+      if wglSwapIntervalEXT(1) then begin
+         beep();
+         sleep(5000);
+         beep();
+      end;
+   end;
+   {$endif}
+   LASTT:=-1;
+   glutDisplayFunc(@GLDrawScene);
+   glutReshapeFunc(@GLReSizeScene);
+   glutKeyboardFunc(@GLKeyboard);
+   glutIdleFunc(@GLDrawScene);
+   glutMainLoop;
+end;
+//OPENGL SPECIFIC END//
+
+
+
+procedure KeyPress(Key:Byte);
+var
+   K:Char;
+begin
+   K:=Chr(Key);
+   case K of
+      #27:        GLStopScroll;
+      '0'..'9':   SpeedMulti := SpeedList[K];
+      'u':        ScrollDir:=1;
+      'd':        ScrollDir:=-1;
+      'U':        ScrollDir:=1;
+      'D':        ScrollDir:=-1;
+      #32:        ScrollStop:=not ScrollStop;
+   end;
+end;
+
+procedure CalcNewY;
+var
+   T: single;
+   TDiff: single;
+begin
+   if LASTT=-1 then LASTT:=glutGet(GLUT_ELAPSED_TIME)/1000;
+   T := glutGet(GLUT_ELAPSED_TIME) / 1000;
+   TDiff:=T-LASTT;
+   LASTT:=T;
+   if not ScrollStop then begin
+      YPos:=YPos+(TDiff*SpeedMulti*ScrollDir);
+      if YPos<0 then YPos:=0;
+      if YPos>TexArrayMax then YPos:=TexArrayMax;
+   end;
+end;
+
+
+
+
+function LastCh(var s:string):string;
+begin
+   result:='x';
+   if length(s)>0 then result:=copy(s,length(s),1);
+end;
+
+procedure CreateImages;
+var
+   th,tw:integer;
+   showw,showh:integer;
+   i:integer;
+   ImgText:TBitmap;
+   txline:string;
+   txrest:string;
+   sl:TStringList;
+   s:string;
+   p:integer;
+   ofs,len:integer;
+   formatstr:string;
+   tx:integer;
+   ltrcnt,ltr,arrc:integer;
+begin
+   SetLength(texarray,0);
+
+   sl:=TStringList.Create;
+   s:=MmoTextSl.Text;
+   s:=StringReplace(s,SectionEnd,'',[rfReplaceAll]);
+   s:=StringReplace(s,LineEnding+'[@','[@',[rfReplaceAll]);
+   sl.Text:=s;
+
+   SetLength(ColorArray,0);
+   ltrcnt:=1;
+   len:=15;
+   repeat
+      ofs:=pos('[@$',sl.Text);
+      if ofs>0 then begin
+         p:=length(ColorArray);
+         SetLength(ColorArray,p+1);
+         //PROCESS AND REMOVE FORMAT [@$00000000BI!]
+         formatstr:=copy(sl.Text,ofs,len);
+         ColorArray[p].position:=ofs;
+         ColorArray[p].Color:=clWhite;
+         ColorArray[p].Style:=[];
+         if copy(formatstr,12,1)='B' then ColorArray[p].Style:=ColorArray[p].Style+[fsBold];
+         if copy(formatstr,13,1)='I' then ColorArray[p].Style:=ColorArray[p].Style+[fsItalic];
+         formatstr:=copy(formatstr,3,9);
+         try
+            ColorArray[p].Color:=StrToIntDef(formatstr,0);
+         finally
+         end;
+         sl.Text:=copy(sl.Text,1,ofs-1)+copy(sl.Text,ofs+len,length(sl.Text));
+      end;
+   until ofs=0;
+
+   BACKR:=BACKCOLOR and 255;
+   BACKG:=(BACKCOLOR shr 8) and 255;
+   BACKB:=(BACKCOLOR shr 16) and 255;
+   showw:=SCREENW;
+   showh:=SCREENH;
+   ImgText:=TBitmap.Create;
+   ImgText.Width:=showw;
+   ImgText.Height:=showh;
+   ImgText.Canvas.Font.Size:=FONTSIZE;
+   ImgText.Canvas.Font.Color:=FONTCOLOR;
+   th:=ImgText.Canvas.TextHeight('WQxyglZ');
+   {$ifdef darwin}
+   TileX:=showw;
+   TileY:=th;
+   {$endif}
+   ImgText.Height:=th;
+   ImgText.Canvas.Brush.Color:=BACKCOLOR;
+   ImgText.Canvas.Pen.Color:=FONTCOLOR;
+   ImgText.Canvas.Brush.Style:=bsSolid;
+   TexArrayMax:=0;
+   for i:=0 to sl.Count-1 do begin
+      txline:=sl[i];
+      txrest:='';
+      while ((length(txline)>0) or (length(txrest)>0)) do begin
+         //CALC ONE LINE
+         tw:=ImgText.Canvas.TextWidth(txline);
+         while tw>showw do begin
+            while ((LastCh(txline)=' ') and (length(txline)>0)) do begin
+               txrest:=LastCh(txline)+txrest;
+               SetLength(txline,length(txline)-1);
+            end;
+            while ((LastCh(txline)<>' ') and (length(txline)>0)) do begin
+               txrest:=LastCh(txline)+txrest;
+               SetLength(txline,length(txline)-1);
+            end;
+            tw:=ImgText.Canvas.TextWidth(txline);
+         end;
+         //DRAW ONE LINE
+         ImgText.Canvas.FillRect(0,0,ImgText.Width,ImgText.Height);
+         if not CENTERTEXT then begin
+            tx:=0;
+         end else begin
+            tw:=ImgText.Canvas.TextWidth(txline);
+            tx:=(SCREENW div 2)-(tw div 2);
+         end;
+         //DRAW LETTER BY LETTER
+         for ltr:=1 to length(txline) do begin
+            for arrc:=length(ColorArray)-1 downto 0 do begin
+               if ColorArray[arrc].position<=ltrcnt then begin
+                  ImgText.Canvas.Font.Color:=ColorArray[arrc].color;
+                  ImgText.Canvas.Font.Style:=ColorArray[arrc].style;
+                  break;
+               end;
+            end;
+            ImgText.Canvas.TextOut(tx,0,copy(txline,ltr,1));
+            tw:=ImgText.Canvas.TextWidth(copy(txline,ltr,1));
+            tx:=tx+tw;
+            inc(ltrcnt);
+         end;
+         //GENERATE OPENGL IMAGE
+         p:=length(texarray);
+         setlength(texarray,p+1);
+         texarray[p] := TOpenGLTileBitmap.Create;
+         texarray[p].Init(ImgText);
+         Inc(TexArrayMax,th);
+         //AND AGAIN
+         txline:=txrest;
+         txrest:='';
+      end;
+      {$ifdef darwin}
+      inc(ltrcnt,length(LineEnding));
+      {$endif}
+      {$ifdef windows}
+      inc(ltrcnt,1);
+      {$endif}
+   end;
+   inc(TexArrayMax,showh);
+   ImgText.Free;
+   sl.Free;
+end;
+
+procedure ShowAnimation(w,h:integer);
+begin
+   try
+      SpeedMulti := SpeedList[INITIALSPEED];
+   except
+      SpeedMulti := SpeedList['5'];
+   end;
+   ScrollStop:=False;
+   SCREENW:=w;
+   SCREENH:=h;
+   Ypos:=0;
+   OldYPos:=0;
+   ScrollDir:=1;
+   GLStartAnimation(w,h);
+end;
+
+end.
+

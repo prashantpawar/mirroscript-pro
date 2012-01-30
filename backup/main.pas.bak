@@ -1,0 +1,610 @@
+
+unit main;
+
+{$mode objfpc}{$H+}
+
+{$define NOTDIRECTRENDER}
+
+interface
+
+uses
+  Classes, SysUtils, FileUtil, LResources, Forms, Controls, Graphics, Dialogs,
+  ExtCtrls, IntfGraphics, LCLIntf, LCLType, ComCtrls, Menus, StdCtrls,
+  gl, OpenGLContext, glext, math;
+
+type
+
+  { TFormMain }
+  TOpenGLTileBitmap = class(TObject)
+  private
+    fTextures : array of GLuint;
+    Count     : integer;
+    fWidth    : Integer;
+    fHeight   : Integer;
+    fHCount   : Integer;
+    fVCount   : Integer;
+    fHPart    : single;
+    fVPart    : single;
+  public
+    destructor Destroy; override;
+    procedure Init(ABitmap: TBitmap);
+    procedure DrawTiles(x,y, wx, wy: single);
+    procedure Clear;
+    property Width: integer read fWidth;
+    property Height: integer read fHeight;
+  end;
+
+  TFormMain = class(TForm)
+     Button1: TButton;
+    Timer1: TTimer;
+    Timer2: TTimer;
+    procedure Button1Click(Sender: TObject);
+    procedure FormCloseQuery(Sender: TObject; var CanClose: boolean);
+    procedure FormCreate(Sender: TObject);
+    procedure FormDestroy(Sender: TObject);
+    procedure FormKeyPress(Sender: TObject; var Key: char);
+    procedure FormPaint(Sender: TObject);
+    procedure FormResize(Sender: TObject);
+    procedure FormShow(Sender: TObject);
+    procedure Timer1Timer(Sender: TObject);
+    procedure CreateGL;
+    procedure GLPaint(Sender: TObject);
+    procedure InitScrollValues;
+    procedure CreateImages;
+    procedure Timer2Timer(Sender: TObject);
+    procedure StopScroll;
+    procedure DoScroll;
+  private
+    { private declarations }
+    procedure RenderScene;
+  public
+    { public declarations }
+    CanRender:Boolean;
+    YPos    : single;
+    PauseDelay: integer;
+    GlContext  : TOpenGLControl;
+    texarray : array of TOpenGLTileBitmap;
+  end;
+
+const
+   KeyPauseDelay: array ['0'..'9'] of Integer = (256, 128, 64, 32, 16, 8, 4, 2, 1, 0);
+var
+  FormMain: TFormMain;
+  StartTime:LongWord;
+  Ofs     : Integer;
+  FONTSIZE:integer;
+  FONTCOLOR:TColor;
+  BACKCOLOR:TColor;
+  BACKR,BACKB,BACKG:integer;
+  INITIALSPEED:char;
+  CENTERTEXT:Boolean;
+  FLIPHORIZONTAL:Boolean;
+  FLIPVERTICAL:Boolean;
+  TileX:integer;
+  TileY:integer;
+  TexArrayMax:integer;
+  ScrollDir:integer;
+  ScrollStop:Boolean;
+  Running:Boolean;
+  Stop:Boolean;
+
+implementation
+
+uses dialog;
+
+
+destructor TOpenGLTileBitmap.Destroy;
+begin
+   Clear;
+   inherited Destroy;
+end;
+
+procedure DrawTile(x,y,w,h: single;u,v: single); inline;
+begin
+   glBegin(GL_QUADS);
+   glTexCoord2f(0, v); glVertex2d(x,   y);
+   glTexCoord2f(0, 0); glVertex2d(x,   y+h);
+   glTexCoord2f(u, 0); glVertex2d(x+w, y+h);
+   glTexCoord2f(u, v); glVertex2d(x+w, y);
+   glEnd;
+end;
+
+procedure BindTexture2D(texName: integer); inline;
+begin
+   glBindTexture(GL_TEXTURE_2D, texName);
+   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP);
+   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP);
+end;
+
+procedure TOpenGLTileBitmap.DrawTiles(x, y, wx, wy: single);
+var
+   i     : integer;
+   j, k  : integer;
+   ox,oy : single;
+begin
+   ox := x;
+   oy := y;
+   glEnable(GL_TEXTURE_2D);
+   for j := 0 to fVCount - 2 do begin
+      x := ox;
+      for k := 0 to fHCount - 2 do begin
+         BindTexture2D(fTextures[j*fHCount+k]);
+         DrawTile(x,y,wx,wy, 1, 1);
+         x := x + wx;
+      end;
+      y := y + wy;
+   end;
+   x := ox + (fHCount-1) * wx;
+   y := oy;
+   i := fHCount-1;
+   for k := 0 to fVCount - 2 do begin
+      BindTexture2D(fTextures[i]);
+      //DrawTile(x,y, wx*fHPart, wy, fHPart, 1);
+      DrawTile(x,y, wx, wy, 1, 1);
+      inc(i, fHCount);
+      y:=y+wy;
+   end;
+   i := fHCount * (fVCount - 1);
+   x := ox;
+   y := oy + (fVCount-1) * wy;
+   for k := 0 to fHCount - 2 do begin
+      BindTexture2D(fTextures[i]);
+      //DrawTile(x,y, wx, wy*fVPart, 1, fVPart);
+      DrawTile(x,y, wx, wy, 1, 1);
+      x:=x+wy;
+      inc(i);
+   end;
+   x := ox + (fHCount-1) * wx;
+   y := oy + (fVCount-1) * wy;
+   BindTexture2D(fTextures[fHCount*fVCount - 1]);
+   //DrawTile(x,y, wx*fHPart, wy*fVPart, fHPart, fVPart);
+   DrawTile(x,y, wx, wy, 1, 1);
+end;
+
+procedure TOpenGLTileBitmap.Clear;
+begin
+   if length(fTextures)>0 then begin
+      glDeleteTextures(length(fTextures), @fTextures[0]);
+      SetLength(fTextures, 0);
+   end;
+end;
+
+procedure TOpenGLTileBitmap.Init(ABitmap: TBitmap);
+var
+   h,v,w : Integer;
+   x,y   : Integer;
+   image : TLazIntfImage;
+   bmp   : TBitmap;
+   i, j  : Integer;
+   line  : PByteArray;
+   r,g,b,a: byte;
+   data  : array of byte;
+begin
+   Clear;
+   if not Assigned(ABitmap) or (ABitmap.Width = 0) or (ABitmap.Height=0) then Exit;
+
+   bmp := TBitmap.Create;
+   image := nil;
+   try
+      bmp.Assign(ABitmap);
+      bmp.PixelFormat := pf32bit;
+      bmp.Width := ABitmap.Width;
+      bmp.Height := ABitmap.Height;
+
+      bmp.Canvas.FillRect(Bounds(0,0,ABitmap.Width,ABitmap.Height) );
+      bmp.Canvas.Brush.Color:=clBlack;
+      bmp.Canvas.Brush.Style:=bsSolid;
+
+      bmp.Canvas.Draw(0,0,ABitmap);
+
+      fHCount := bmp.Width div TileX;
+      fVCount := bmp.Height div TileY;
+
+      if bmp.Width mod TileX > 0 then inc(fHCount);
+      if bmp.Height mod TileY > 0 then inc(fVCount);
+
+      fHPart := (bmp.Width mod TileX) / TileX;
+      fVPart := (bmp.Height mod TileY) / TileY;
+
+      count := fHCount*fVCount;
+      if count=0 then Exit;
+
+      fWidth  := bmp.Width {fHCount*TileX};
+      fHeight := bmp.Height {fVCount*TileY};
+      SetLength(fTextures, count);
+
+      image := bmp.CreateIntfImage;
+
+      SetLength(data, TileX*TileY*4);
+      SetLength(fTextures, count);
+      glGenTextures(count, @fTextures[0]);
+      for i := 0 to count - 1 do begin
+         x := i mod fHCount;
+         y := i div fHCount;
+         v := y * TileX;
+
+         h := x * TileX;
+         if (h + TileX) > bmp.Width then
+            w := bmp.Width - h
+         else
+            w := TileX;
+         w:=w*4;
+
+         j := length(data)-TileX*4;
+         FillChar(data[0], length(data), 0);
+
+         for v := v to Min(v+TileY, bmp.Height)-1 do begin
+            line := image.GetDataLineStart(v);
+            System.Move(line^[h*4], data[j], w);
+            dec(j, TileX*4);
+         end;
+
+         {$ifdef darwin}
+         j := 0;
+         while j < length(data) do begin
+            a:=data[j];
+            r:=data[j+1];
+            g:=data[j+2];
+            b:=data[j+3];
+
+            data[j] := b;
+            data[j+1] := g;
+            data[j+2] := r;
+            data[j+3] := a;
+            inc(j, 4);
+         end;
+         {$endif}
+
+         glEnable(GL_TEXTURE_2D);
+         glBindTexture(GL_TEXTURE_2D, fTextures[i]);
+
+         glTexImage2D(GL_TEXTURE_2D, 0, 4, TileX, TileY, 0, GL_BGRA, GL_UNSIGNED_BYTE, @data[0]);
+      end;
+   finally
+      image.Free;
+      bmp.Free;
+   end;
+end;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+procedure TFormMain.DoScroll;
+var
+   nowTime: LongWord;
+   TDiff: single;
+   oldypos:single;
+begin
+   nowTime:=GetTickCount;
+   TDiff:=(nowTime-StartTime)*ScrollDir;
+   StartTime := nowTime;
+   if ((not CanRender) or (ScrollStop)) then exit;
+
+   oldypos:=YPos;
+   if PauseDelay>0 then begin
+      TDiff:=TDiff/PauseDelay;
+   end;
+   YPos := YPos + TDiff;
+   if YPos>TexArrayMax then YPos:=TexArrayMax;
+   if YPos<0 then YPos:=0;
+
+   if floor(oldypos)<>floor(YPos) then begin
+      {$ifdef DIRECTRENDER}
+      RenderScene;
+      {$else}
+      GLContext.Invalidate;
+      {$endif}
+   end;
+end;
+
+procedure TFormMain.Timer1Timer(Sender: TObject);
+var
+   nowTime: LongWord;
+   d: single;
+   oldypos:single;
+begin
+   Timer1.Enabled:=False;
+   DoScroll;
+   if CanRender then Timer1.Enabled:=True;
+end;
+
+procedure TFormMain.RenderScene;
+var
+   y : integer;
+   i : integer;
+   from:integer;
+begin
+   if not CanRender then exit;
+   glViewport(0, 0, FormMain.ClientWidth, FormMain.ClientHeight);
+   glClearColor(BACKR, BACKG, BACKB, 0);         //R G B ALPHA
+   glClear(GL_COLOR_BUFFER_BIT);
+   glMatrixMode(GL_PROJECTION);
+   glLoadIdentity;
+
+   if     FLIPHORIZONTAL and     FLIPVERTICAL then glOrtho(FormMain.ClientWidth, 0, 0, FormMain.ClientHeight, -1, 1);
+   if not FLIPHORIZONTAL and     FLIPVERTICAL then glOrtho(0, FormMain.ClientWidth, 0, FormMain.ClientHeight, -1, 1);
+   if     FLIPHORIZONTAL and not FLIPVERTICAL then glOrtho(FormMain.ClientWidth, 0, FormMain.ClientHeight, 0, -1, 1);
+   if not FLIPHORIZONTAL and not FLIPVERTICAL then glOrtho(0, FormMain.ClientWidth, FormMain.ClientHeight, 0, -1, 1);
+
+   //glOrtho(0, FormMain.ClientWidth, 0, FormMain.ClientHeight, -1, 1);       //WOW WOW!!!
+   glMatrixMode(GL_ModelView);
+
+   y := floor(FormMain.ClientHeight-YPos);
+   from:=0;
+   if y<0 then begin
+      from:=(-1 * y) div texarray[0].Height;
+   end;
+   if from>length(texarray)-1 then from:=length(texarray)-1;
+
+   for i:=0 to length(texarray)-1 do begin
+      texarray[i].DrawTiles(0, y,TileX,TileY);
+      y := y + texarray[i].Height;
+      if y>FormMain.ClientHeight then break;
+   end;
+
+   GlContext.SwapBuffers;
+end;
+
+procedure TFormMain.CreateImages;
+var
+   th,tw:integer;
+   showw,showh:integer;
+   i:integer;
+   ImgText:TBitmap;
+begin
+   BACKR:=BACKCOLOR and 255;
+   BACKG:=(BACKCOLOR shr 8) and 255;
+   BACKB:=(BACKCOLOR shr 16) and 255;
+
+   showw:=FormMain.ClientWidth;
+   showh:=FormMain.ClientHeight;
+
+   ImgText:=TBitmap.Create;
+   ImgText.Width:=showw;
+   ImgText.Height:=showh;
+
+   //ImgText.Canvas.Font.Name:='Times New Roman';
+   ImgText.Canvas.Font.Size:=FONTSIZE;
+   ImgText.Canvas.Font.Color:=FONTCOLOR;
+   th:=ImgText.Canvas.TextHeight('WQxyglZ');
+
+   TileX:=showw;
+   TileY:=th;
+
+   ImgText.Height:=th;
+   ImgText.Canvas.Brush.Color:=BACKCOLOR;
+   ImgText.Canvas.Pen.Color:=FONTCOLOR;
+   ImgText.Canvas.Brush.Style:=bsSolid;
+
+   TexArrayMax:=0;
+   for i:=0 to FormDialog.MmoText.Lines.Count-1 do begin;
+      //tw:=ImgText.Canvas.TextWidth(FormDialog.MmoText.Lines[i]);
+      //if tw<10 then tw:=10;
+      //if tw>showw then tw:=showw;
+      //ImgText.Width:=tw;
+      ImgText.Canvas.FillRect(0,0,ImgText.Width,ImgText.Height);
+      if not CENTERTEXT then begin
+         ImgText.Canvas.TextOut(0,0,FormDialog.MmoText.Lines[i]);
+      end else begin
+         tw:=ImgText.Canvas.TextWidth(FormDialog.MmoText.Lines[i]);
+         ImgText.Canvas.TextOut((FormMain.ClientWidth div 2)-(tw div 2),0,FormDialog.MmoText.Lines[i]);
+      end;
+      setlength(texarray,i+1);
+      texarray[i] := TOpenGLTileBitmap.Create;
+      texarray[i].Init(ImgText);
+      Inc(TexArrayMax,th);
+   end;
+   inc(TexArrayMax,showh);
+   ImgText.Free;
+end;
+
+procedure TFormMain.Timer2Timer(Sender: TObject);
+begin
+   Timer2.Enabled:=False;
+   CreateImages;
+
+   //FormMain.WindowState:=wsNormal;
+
+   FormResize(Self);
+
+   CanRender:=True;
+   StartTime:=GetTickCount;
+
+   //timer1.Enabled:=True;
+   Button1.Click;
+end;
+
+procedure TFormMain.FormShow(Sender: TObject);
+begin
+   InitScrollValues;
+   //FormMain.WindowState:=wsMaximized;
+   FormMain.Left:=0;
+   FormMain.Top:=0;
+   FormMain.Width:=Screen.Width;
+   FormMain.Height:=Screen.Height;
+   application.ProcessMessages;
+   FormResize(Self);
+
+   CreateGL;
+   sleep(1000);
+   Timer2.Enabled:=True;
+end;
+
+procedure TFormMain.CreateGL;
+begin
+   GLContext := TOpenGLControl.Create(FormMain);
+   GLContext.Top := 0;
+   GLContext.Left := 0;
+   GLContext.Width := FormMain.ClientWidth;
+   GLContext.Height := FormMain.ClientHeight;
+   GLContext.Parent := FormMain;
+   //GLContext.DoubleBuffered:=True;
+   {$ifdef DIRECTRENDER}
+   {$else}
+   GLContext.OnPaint:=@GLPaint;
+   {$endif}
+end;
+
+procedure TFormMain.InitScrollValues;
+begin
+   try
+      PauseDelay := KeyPauseDelay[INITIALSPEED];
+   except
+      PauseDelay := KeyPauseDelay['5'];
+   end;
+   ScrollDir:=1;
+   ScrollStop:=False;
+   CanRender:=False;
+   YPos := 0;
+end;
+
+procedure TFormMain.FormCreate(Sender: TObject);
+begin
+   //CGCaptureAllDisplays;
+   Running:=False;
+   Stop:=False;
+   InitScrollValues;
+end;
+
+procedure TFormMain.Button1Click(Sender: TObject);
+begin
+   if Running then exit;
+   Running:=True;
+   while not Stop do begin
+      DoScroll;
+      application.ProcessMessages;
+   end;
+   Stop:=False;
+   Running:=False;
+end;
+
+procedure TFormMain.FormCloseQuery(Sender: TObject; var CanClose: boolean);
+begin
+   StopScroll;
+   CanClose:=True;
+end;
+
+procedure TFormMain.FormDestroy(Sender: TObject);
+var
+   i:integer;
+begin
+   //CGReleaseAllDisplays;
+   for i:=0 to length(texarray)-1 do begin
+      texarray[i].Free;
+   end;
+   setlength(texarray,0);
+   GlContext.Free;
+end;
+
+procedure TFormMain.FormKeyPress(Sender: TObject; var Key: char);
+begin
+   case Key of
+      #27:        StopScroll;
+      '0'..'9':   PauseDelay := KeyPauseDelay[Key];
+      'u':        ScrollDir:=1;
+      'd':        ScrollDir:=-1;
+      #32:        ScrollStop:=not ScrollStop;
+   end;
+end;
+
+procedure TFormMain.StopScroll;
+begin
+   Stop:=True;
+   CanRender:=False;
+   Timer1.Enabled:=False;
+   ModalResult:=mrOK;
+end;
+
+procedure TFormMain.FormPaint(Sender: TObject);
+begin
+   {$ifdef DIRECTRENDER}
+   RenderScene;
+   {$else}
+   GLContext.Invalidate;
+   {$endif}
+end;
+
+procedure TFormMain.GLPaint(Sender: TObject);
+begin
+   RenderScene;
+end;
+
+procedure TFormMain.FormResize(Sender: TObject);
+begin
+   if (Assigned(GLContext) and CanRender) then begin
+      GLContext.Width := FormMain.ClientWidth;
+      GLContext.Height := FormMain.ClientHeight;
+      GlContext.ReAlign;
+   end;
+end;
+
+{
+procedure TFormMain.RenderScene;
+var
+   y : integer;
+   i : integer;
+   from:integer;
+begin
+   if not CanRender then exit;
+   glViewport(0, 0, FormMain.ClientWidth, FormMain.ClientHeight);
+   glClearColor(BACKR, BACKG, BACKB, 0);         //R G B ALPHA
+   //glClear(GL_COLOR_BUFFER_BIT);
+   glMatrixMode(GL_PROJECTION);
+   glLoadIdentity;
+   glOrtho(0, FormMain.ClientWidth, FormMain.ClientHeight, 0, -1, 1);
+   //glOrtho(0, FormMain.ClientWidth, 0, FormMain.ClientHeight, -1, 1);       //WOW WOW!!!
+   glMatrixMode(GL_ModelView);
+
+   i:=0;
+   y := floor(FormMain.ClientHeight-YPos);
+
+   from:=0;
+   if y<0 then begin
+      from:=(-1 * y) div texarray[0].Height;
+   end;
+   if from>length(texarray)-1 then from:=length(texarray)-1;
+   MenuItem1.Caption:=inttostr(from);
+
+   for i:=0 to length(texarray)-1 do begin
+      //texarray[i].DrawTiles(0, y,TileX,TileY);
+      y := y + texarray[i].Height;
+      //if y>FormMain.ClientHeight then break;
+      if y>FormMain.ClientHeight then begin
+         y := y - texarray[i].Height;
+         texarray[i].DrawTiles(0, y,TileX,TileY);
+         break;
+      end;
+   end;
+
+   //texarray[i].DrawTiles(0, 100,TileX,TileY);
+
+   //glReadBuffer(GL_FRONT);
+   glReadBuffer(GL_BACK);
+   //glRasterPos2i(100,100);
+   glCopyPixels(0,0,FormMain.ClientWidth,FormMain.ClientHeight,GL_COLOR);
+   //glCopyPixels(10,10,200,20,GL_COLOR);
+   //glReadBuffer(GL_BACK);
+   //glFlush;
+
+   GlContext.SwapBuffers;
+end;
+
+}
+
+initialization
+  {$I main.lrs}
+
+end.
+
